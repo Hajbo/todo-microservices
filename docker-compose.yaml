@@ -1,0 +1,124 @@
+version: '3.7'
+
+services:
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - 16686:16686
+
+  redis:
+    container_name: redis
+    image: redis:6.0.9-alpine
+    expose:
+      - 6379
+    restart: always
+    volumes:
+      - ./data/redis:/data
+
+  rabbit:
+    container_name: rabbit
+    image: rabbitmq:3.8-management
+    expose:
+      - 5672
+    healthcheck:
+      test: [ "CMD", "nc", "-z", "localhost", "5672" ]
+      interval: 3s
+      timeout: 10s
+      retries: 3
+    ports:
+      - 15672:15672
+
+  mysqldb:
+    container_name: mysqldb
+    image: mysql:8.0.22
+    expose:
+      - 3306
+    command: --default-authentication-plugin=mysql_native_password
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: authdb
+
+  postgresdb:
+    container_name: postgresdb
+    image: postgres:13-alpine
+    expose:
+     - 5432
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=todoapp
+      - POSTGRES_PASSWORD=todoapp
+      - POSTGRES_DB=users
+
+  mongo:
+    container_name: mongo
+    image: mongo:4.2.8
+    expose:
+      - 27017
+    volumes:
+      - ./data/mongo:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=auth
+
+  auth:
+    container_name: auth
+    restart: always
+    build:
+      context: ./services/auth
+      dockerfile: Dockerfile
+    depends_on:
+      - rabbit
+      - mysqldb
+      - user
+      - jaeger
+    expose:
+      - 8080
+
+  user:
+    container_name: user
+    restart: always
+    build:
+      context: ./services/user
+      dockerfile: Dockerfile
+    depends_on:
+      - rabbit
+      - postgresdb
+      - jaeger
+    expose:
+      - 8080
+
+  todo:
+    container_name: todo
+    restart: always
+    build:
+      context: ./services/todo
+      dockerfile: Dockerfile
+    depends_on:
+      - mongo
+      - rabbit
+      - jaeger
+    expose:
+      - 8080
+    environment:
+      - NODE_ENV=production
+      - JAEGER_AGENT_HOST=jaeger
+      # Note: if your application is using Node.js Jaeger Client, you need port 6832,
+      #       unless issue https://github.com/jaegertracing/jaeger/issues/1596 is resolved.
+      - JAEGER_AGENT_PORT=6832
+
+  nginx:
+    container_name: nginx
+    restart: always
+    build:
+      context: ./services/gateway
+      dockerfile: Dockerfile
+    depends_on:
+      - user
+      - todo
+      - auth
+    ports:
+      - 5000:80
+      - 443:443

@@ -1,0 +1,7 @@
+{
+    "python.analysis.extraPaths": [
+        "services/auth",
+        "services/user",
+    ],
+    "python.languageServer": "Pylance"
+}

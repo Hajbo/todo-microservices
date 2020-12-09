@@ -1,0 +1,18 @@
+{
+  "name": "todo",
+  "version": "1.0.0",
+  "description": "Todo microservice",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Hajbo",
+  "license": "ISC",
+  "dependencies": {
+    "@chankamlam/express-jaeger": "^1.1.29",
+    "amqplib": "^0.6.0",
+    "express": "^4.17.1",
+    "jaeger-client": "^3.18.1",
+    "mongoose": "^5.11.4"
+  }
+}
